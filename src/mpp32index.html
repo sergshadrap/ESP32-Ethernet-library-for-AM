@@ -1,0 +1,177 @@
+<html>
+<head>
+<title>MppDevices</title>
+
+<style>
+.loading {
+	border: 5px solid #f3f3f3;
+	border-radius: 50%;
+	border-top: 5px solid #3498db;
+	width: 20px;
+	height: 20px;
+	animation: spin 2s linear infinite;
+}
+
+@keyframes spin { 
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+</style>
+
+</head>
+
+<body onload="loadState()">
+
+	<script>
+		function loadState() {
+			
+			document.getElementById("ssidsLoading").style.display = "none";
+			
+			var xProps = new XMLHttpRequest();
+			xProps.onreadystatechange = function() {
+				if (this.readyState == 4) {
+					if (this.status == 200) {
+						var jsonProps = JSON.parse(xProps.responseText);
+						var oldTable = document.getElementById('props'), newTable = oldTable
+								.cloneNode(true);
+						var oldChoices = document.getElementById('dprops'), newChoices = oldChoices
+								.cloneNode(true)
+						for ( var key in jsonProps) {
+							var tr = document.createElement('tr');
+							var td = document.createElement('td');
+							td.appendChild(document.createTextNode(key));
+							tr.appendChild(td);
+							td = document.createElement('td');
+							var val = jsonProps[key];
+							if (val == null) val = '';
+							td.appendChild(document
+									.createTextNode(val));
+							tr.appendChild(td);
+							newTable.appendChild(tr);
+							var ov = document.createElement("option");
+							ov.setAttribute("value", key);
+							ov.appendChild(document.createTextNode(key));
+							newChoices.appendChild(ov);
+						}
+						oldTable.parentNode.replaceChild(newTable, oldTable);
+						oldChoices.parentNode.replaceChild(newChoices,oldChoices);
+					} else {
+						alert("Error loading properties " + this.status);
+					}
+					document.getElementById("propsLoading").style.display = "none";
+				}
+			};
+			xProps.open("GET", "props", true);
+			xProps.send();
+
+			var xVersion = new XMLHttpRequest();
+			xVersion.onreadystatechange = function() {
+				if (this.readyState == 4) {
+					if (this.status == 200) {
+						document.getElementById('dVersion').innerHTML = xVersion.responseText;
+					} else {
+						document.getElementById('dVersion').innerHTML = this.status;
+					}
+				}
+			};
+			xVersion.open("GET", "version", true);
+			xVersion.send();
+		}
+		
+		function scanWifi() {
+			document.getElementById("ssidsLoading").style.display = "block";
+			document.getElementById("ssidButton").style.display = "none";
+			var xSsids = new XMLHttpRequest();
+			xSsids.onreadystatechange = function() {
+				if (this.readyState == 4) {
+					if (this.status == 200) {
+						var jsonSsids = JSON.parse(xSsids.responseText);
+						var oldChoices = document.getElementById('dSsids'), newChoices = oldChoices
+								.cloneNode(false)
+						for (i in jsonSsids) {
+							// "<option value='"..k.."'>"..k.."</option>"
+							var ov = document.createElement("option");
+							var ssid = jsonSsids[i].ssid;
+							ov.setAttribute("value", ssid);
+							ov.appendChild(document.createTextNode(ssid
+									+ " ch=" + jsonSsids[i].channel + " rssi="
+									+ jsonSsids[i].rssi));
+							newChoices.appendChild(ov);
+						}
+						oldChoices.parentNode.replaceChild(newChoices,
+								oldChoices);
+					} else {
+						alert("Error loading ssids " + this.status);
+					}
+					document.getElementById("ssidsLoading").style.display = "none";
+					document.getElementById("ssidButton").style.display = "block";
+				}
+			};
+			xSsids.open("GET", "scan", true);
+			xSsids.send();
+		}
+	</script>
+
+	<h1>MppDevice Configuration (ESP8266)</h1>
+
+	<h4>SSID</h4>
+	<button onclick="scanWifi()" id="ssidButton">Scan</button>
+	<div class="loading" id="ssidsLoading"></div>
+	<p>
+	<form action='setwifi' method='get'>
+		<input type='text' name='ssid' value='' maxlength='100' width='100px'
+			placeholder='ssid' /> &nbsp;or&nbsp; <select name='dssid'
+			id='dSsids'></select>
+		<h4>Password</h4>
+		<input type='text' name='password' value='' maxlength='100'
+			width='100px' placeholder='empty for open AP' />
+		<p>
+			<input type='submit' value='Set Wifi' />
+	</form>
+
+	<h4>Properties</h4>
+	<div class="loading" id="propsLoading"></div>
+	<table id="props" border="1">
+	</table>
+	<br>
+	<form action='downloadprops' method='get'>
+		<input type='submit' value='Download Properties'/>
+	</form>
+	<form action="uploadprops" method="post" enctype="multipart/form-data">
+		<input type="file" name="fileToUpload" id="fileToUpload"> 
+		<input type="submit" value="Restore Properties" name="submit">
+	</form>
+
+	Modify Property
+	<form action='setprops' method='get'>
+		<select name='keyselect' id='dprops'></select> 
+		or 
+		<input type='text' name='keyname' value='' maxlength='100' width='50px' placeholder='property' /> 
+			<br>set to<br> 
+		<input type='text' name='value' value='' maxlength='100' width='100px' />
+				&nbsp; 
+		<input type='submit' value='Set'/>&nbsp;(empty to remove)
+	</form>
+
+	<form action='reset' method='get'>
+		<input type='submit' value='Clear Properties'/>
+	</form>
+	
+	<h4>Update Firmware</h4>
+
+	<form action="upload" method="post" enctype="multipart/form-data">
+		<input type="file" name="fileToUpload" id="fileToUpload"> 
+		<input type="submit" value="Upload Firmware" name="submit">
+	</form>
+
+	<h4>Restart</h4>
+	<form action='restart' method='get'>
+		<input type='submit' value='Restart Device'/>
+	</form>
+
+	<h4>Version</h4>
+	<p id="dVersion"></p>
+
+</body>
+
+</html>
